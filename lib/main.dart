@@ -3,6 +3,7 @@ import 'package:expenses_app/widgets/transaction_list.dart';
 import 'package:flutter/material.dart';
 
 import 'models/transaction.dart';
+import 'widgets/chart.dart';
 
 void main() {
   runApp(const MyApp());
@@ -18,6 +19,18 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.purple,
         accentColor: Colors.amber,
+        fontFamily: 'Comic Code',
+        textTheme: TextTheme(
+            headline6: TextStyle(
+          fontFamily: 'OpenSans',
+          fontSize: 18,
+        )),
+        appBarTheme: AppBarTheme(
+            titleTextStyle: TextStyle(
+          fontFamily: 'Quicksand',
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        )),
       ),
       home: MyHomePage(),
     );
@@ -33,19 +46,29 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final List<Transaction> _userTransactions = [
-    Transaction(
-      id: 't1',
-      title: 'New Shoes',
-      amount: 6.99,
-      date: DateTime.now(),
-    ),
-    Transaction(
-      id: 't2',
-      title: 'Weekly Groceries',
-      amount: 16.53,
-      date: DateTime.now(),
-    ),
+    // Transaction(
+    //   id: 't1',
+    //   title: 'New Shoes',
+    //   amount: 6.99,
+    //   date: DateTime.now(),
+    // ),
+    // Transaction(
+    //   id: 't2',
+    //   title: 'Weekly Groceries',
+    //   amount: 16.53,
+    //   date: DateTime.now(),
+    // ),
   ];
+
+  List<Transaction> get _recentTransactions {
+    return _userTransactions.where((element) {
+      return element.date.isAfter(
+        DateTime.now().subtract(
+          Duration(days: 7),
+        ),
+      );
+    }).toList();
+  }
 
   void _addNewTransaction(String txTitle, double txAmount) {
     final newTx = Transaction(
@@ -76,7 +99,9 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Personal Expenses'),
+        title: Text(
+          'Personal Expenses',
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.add),
@@ -88,17 +113,7 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: double.infinity,
-              child: Card(
-                color: Colors.blue,
-                child: Text(
-                  'CHART!',
-                  textAlign: TextAlign.center,
-                ),
-                elevation: 5,
-              ),
-            ),
+            Chart(_recentTransactions),
             TransactionList(_userTransactions),
           ],
         ),
