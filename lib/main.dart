@@ -1,5 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:io';
 
 import 'models/transaction.dart';
 import 'widgets/chart.dart';
@@ -7,6 +9,7 @@ import 'widgets/new_transaction.dart';
 import 'widgets/transaction_list.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -18,6 +21,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Personal Expenses',
       theme: ThemeData(
+        //platform: TargetPlatform.iOS,
         primarySwatch: Colors.purple,
         colorScheme: ColorScheme.fromSeed(
             seedColor: Colors.purple, secondary: Colors.amber),
@@ -52,21 +56,26 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  final List<Transaction> _userTransactions = [
-    // Transaction(
-    //   id: 't1',
-    //   title: 'New Shoes',
-    //   amount: 6.99,
-    //   date: DateTime.now(),
-    // ),
-    // Transaction(
-    //   id: 't2',
-    //   title: 'Weekly Groceries',
-    //   amount: 16.53,
-    //   date: DateTime.now(),
-    // ),
-  ];
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
+  final List<Transaction> _userTransactions = [];
+  bool _showChart = false;
+
+  @override
+  void initState() {
+    WidgetsBinding.instance.addObserver(this);
+    super.initState();
+  }
+
+  @override
+  didChangeAppLifecycleState(AppLifecycleState state) {
+    print(state);
+  }
+
+  @override
+  dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   List<Transaction> get _recentTransactions {
     return _userTransactions.where((element) {
@@ -96,6 +105,37 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  List<Widget> _buildLandscapeContent(
+      double avail_height, Widget txListWidget) {
+    return [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('Show Chart'),
+          Switch.adaptive(
+              activeColor: Theme.of(context).accentColor,
+              value: _showChart,
+              onChanged: (input) {
+                setState(() {
+                  _showChart = input;
+                });
+              })
+        ],
+      ),
+      _showChart
+          ? Container(
+              height: avail_height * 0.7, child: Chart(_recentTransactions))
+          : txListWidget,
+    ];
+  }
+
+  List<Widget> _buildPortraitContent(double avail_height, Widget txListWidget) {
+    return [
+      Container(height: avail_height * 0.3, child: Chart(_recentTransactions)),
+      txListWidget
+    ];
+  }
+
   void _startAddNewTransaction(BuildContext ctx) {
     showModalBottomSheet(
       context: ctx,
@@ -109,34 +149,90 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Personal Expenses',
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: () => _startAddNewTransaction(context),
-          )
+  AppBar _materialAppBar() {
+    return AppBar(
+      title: Text(
+        'Personal Expenses',
+      ),
+      actions: [
+        IconButton(
+          icon: Icon(Icons.add),
+          onPressed: () => _startAddNewTransaction(context),
+        )
+      ],
+    );
+  }
+
+  CupertinoNavigationBar _cupertinoAppBar() {
+    return CupertinoNavigationBar(
+      middle: Text(
+        'Personal Expenses',
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            child: Icon(CupertinoIcons.add),
+            onTap: () => _startAddNewTransaction(context),
+          ),
         ],
       ),
-      body: SingleChildScrollView(
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final _isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    final _appBar = _materialAppBar();
+
+    final _CupertinoAppBar = _cupertinoAppBar();
+
+    final _appBarHeight = Platform.isIOS
+        ? _CupertinoAppBar.preferredSize.height
+        : _appBar.preferredSize.height;
+
+    final _availableHeight = (MediaQuery.of(context).size.height -
+        _appBarHeight -
+        (MediaQuery.of(context).padding.top +
+            MediaQuery.of(context).padding.top));
+
+    final _txListWidget = Container(
+        height: _availableHeight * 0.7, // 0.7
+        child: TransactionList(_userTransactions, _deleteTransaction));
+
+    final _pageBody = SafeArea(
+      child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Chart(_recentTransactions),
-            TransactionList(_userTransactions, _deleteTransaction),
+            if (_isLandscape)
+              ..._buildLandscapeContent(_availableHeight, _txListWidget),
+            if (!_isLandscape)
+              ..._buildPortraitContent(_availableHeight, _txListWidget),
           ],
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: () => _startAddNewTransaction(context),
-      ),
     );
+
+    return Platform.isIOS
+        ? CupertinoPageScaffold(
+            child: _pageBody,
+            navigationBar: _CupertinoAppBar,
+          )
+        : Scaffold(
+            appBar: _appBar,
+            body: _pageBody,
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerFloat,
+            floatingActionButton:
+                Theme.of(context).platform == TargetPlatform.iOS
+                    ? Container()
+                    : FloatingActionButton(
+                        child: Icon(Icons.add),
+                        onPressed: () => _startAddNewTransaction(context),
+                      ),
+          );
   }
 }

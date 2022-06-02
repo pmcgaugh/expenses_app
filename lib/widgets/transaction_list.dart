@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../models/transaction.dart';
+import 'transaction_item.dart';
 
 class TransactionList extends StatelessWidget {
   final List<Transaction> transactions;
@@ -12,59 +12,34 @@ class TransactionList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 400,
-      child: transactions.isEmpty
-          ? Column(
-              children: [
-                Text('No transactions added yet...',
-                    style: Theme.of(context).textTheme.headline6),
-                SizedBox(height: 75),
-                Container(
-                  height: 200,
-                  child: Image.asset(
-                    'assets/images/waiting.png',
-                    fit: BoxFit.cover,
+    return transactions.isEmpty
+        ? LayoutBuilder(
+            builder: (context, constraints) {
+              return Column(
+                children: [
+                  FittedBox(
+                    child: Text('No transactions added yet...',
+                        style: Theme.of(context).textTheme.headline6),
                   ),
-                )
-              ],
-            )
-          : ListView.builder(
-              itemBuilder: (ctx, index) {
-                return Card(
-                  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 5),
-                  elevation: 5,
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      radius: 30,
-                      child: Padding(
-                        padding: EdgeInsets.all(10),
-                        child: FittedBox(
-                          child: Text(
-                              '\$${transactions[index].amount.toStringAsFixed(2)}'),
-                        ),
-                      ),
+                  SizedBox(height: constraints.maxHeight * 0.15),
+                  Container(
+                    height: constraints.maxHeight * 0.6,
+                    child: Image.asset(
+                      'assets/images/waiting.png',
+                      fit: BoxFit.cover,
                     ),
-                    title: Text(
-                      transactions[index].title,
-                      style: Theme.of(context).textTheme.headline6,
-                    ),
-                    subtitle: Text(
-                      DateFormat.yMMMd().format(transactions[index].date),
-                    ),
-                    trailing: IconButton(
-                      onPressed: () =>
-                          _deleteTransaction(transactions[index].id),
-                      icon: Icon(
-                        Icons.delete,
-                        color: Colors.red,
-                      ),
-                    ),
-                  ),
-                );
-              },
-              itemCount: transactions.length,
-            ),
-    );
+                  )
+                ],
+              );
+            },
+          )
+        : ListView.builder(
+            itemBuilder: (ctx, index) {
+              return TransactionItem(
+                  transactions: transactions[index],
+                  deleteTransaction: _deleteTransaction);
+            },
+            itemCount: transactions.length,
+          );
   }
 }
